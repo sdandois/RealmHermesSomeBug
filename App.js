@@ -1,139 +1,98 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
-import React, {useEffect} from 'react';
-import type {Node} from 'react';
+import React, { useCallback, useRef} from 'react';
 import Realm from 'realm';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import {StyleSheet, Text, FlatList, Button, View} from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import {createRealmContext} from '@realm/react';
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
-
-class TestObject extends Realm.Object {
-  static generate() {
+class Task extends Realm.Object {
+  static generate(id) {
     return {
-      primaryKey: 'current',
-      dictionary: {},
+      id,
+      name: `${Math.floor(Math.random() * 100000)}`,
     };
   }
 
   static schema = {
     name: 'User',
-    primaryKey: 'primaryKey',
+    primaryKey: 'id',
     properties: {
-      primaryKey: 'string',
-      dictionary: '{}',
+      id: 'int',
+      name: 'string',
     },
   };
 }
 
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+const RealmContext = createRealmContext({
+  schemaVersion: 2,
+  deleteRealmIfMigrationNeeded: true,
+  schema: [Task],
+  // onFirstOpen: realm => {
+  //   for (let index = 0; index < 20000; index++) {
+  //     const element = Task.generate(index);
+  //     realm.create(Task, element, 'all');
+  //   }
+  // },
+});
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+export const {useObject, useQuery, useRealm, RealmProvider} = RealmContext;
 
-  useEffect(() => {
-    const init = async () => {
-      console.log('init');
-      const realm = await Realm.open({
-        schema: [TestObject],
-      });
+const getItemLayout = (data, index) => ({
+  length: 150,
+  offset: 150 * index,
+  index,
+});
 
-      console.log('opened');
+const Section = () => {
+  const data = [];
+  // const data = useQuery(Task);
+  // const realm = useRealm();
 
-      realm.write(() => {
-        realm.create(TestObject, TestObject.generate(), 'all');
-      });
+  // useEffect(() => {
+  //   realm.write(() => {
+  //     for (let index = 0; index < 20000; index++) {
+  //       const element = Task.generate(index);
+  //       realm.create(Task, element, 'all');
+  //     }
+  //   });
+  //   // alert('finished writing');
+  // }, [realm]);
+  // const data = [{id: 42, name: 'pepe'}];
 
-      const object = realm.objectForPrimaryKey(TestObject, 'current');
+  // const renderItem = useCallback(({item}) => {
+  //   return (
+  //     <View style={{height: 150, borderWidth: 1}}>
+  //       <Text>{item.name ?? 'string'}</Text>
+  //     </View>
+  //   );
+  // }, []);
 
-      console.log('before some');
+  const flatListRef = useRef();
 
-      /**
-       * The following line is the problematic one. It hangs for array like functions.
-       */
-      object.dictionary.forEach();
-      console.log('after some (never executes)');
-    };
+  // return null;
 
-    init().catch(err => {
-      console.error('Err', err);
-    });
-  }, []);
+  return <FlatList renderItem={() => null} data={[]} />;
+
+  return <View style={{flex: 1, backgroundColor: 'red'}} />;
+
+  return <FlatList data={[]} renderItem={({item}) => <View />} />;
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <View style={{flex: 1}}>
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        ref={flatListRef}
+        getItemLayout={getItemLayout}
+      />
+    </View>
+  );
+};
+
+const App = () => {
+  return (
+    <RealmProvider fallback={<View style={{flex: 1}} />}>
+      <Section />
+    </RealmProvider>
   );
 };
 
