@@ -1,8 +1,8 @@
-import React, { useCallback, useRef} from 'react';
+import React, { useCallback, useRef, useEffect, useLayoutEffect, useState } from 'react';
 import Realm from 'realm';
-import {StyleSheet, Text, FlatList, Button, View} from 'react-native';
+import { StyleSheet, Text, FlatList, Button, View } from 'react-native';
 
-import {createRealmContext} from '@realm/react';
+import { createRealmContext } from '@realm/react';
 
 class Task extends Realm.Object {
   static generate(id) {
@@ -23,18 +23,13 @@ class Task extends Realm.Object {
 }
 
 const RealmContext = createRealmContext({
-  schemaVersion: 2,
+  schemaVersion: 3,
   deleteRealmIfMigrationNeeded: true,
-  schema: [Task],
-  // onFirstOpen: realm => {
-  //   for (let index = 0; index < 20000; index++) {
-  //     const element = Task.generate(index);
-  //     realm.create(Task, element, 'all');
-  //   }
-  // },
+  schema: [ Task ],
+
 });
 
-export const {useObject, useQuery, useRealm, RealmProvider} = RealmContext;
+export const { useObject, useQuery, useRealm, RealmProvider } = RealmContext;
 
 const getItemLayout = (data, index) => ({
   length: 150,
@@ -43,8 +38,8 @@ const getItemLayout = (data, index) => ({
 });
 
 const Section = () => {
-  const data = [];
-  // const data = useQuery(Task);
+  // const data = [];
+  const data = useQuery(Task);
   // const realm = useRealm();
 
   // useEffect(() => {
@@ -58,31 +53,97 @@ const Section = () => {
   // }, [realm]);
   // const data = [{id: 42, name: 'pepe'}];
 
-  // const renderItem = useCallback(({item}) => {
-  //   return (
-  //     <View style={{height: 150, borderWidth: 1}}>
-  //       <Text>{item.name ?? 'string'}</Text>
-  //     </View>
-  //   );
-  // }, []);
+  const [ start, setStart ] = useState(performance.now())
+  const [ end, setEnd ] = useState(performance.now())
+
+  const Item = useCallback(({ item }) => {
+    useEffect(() => {
+      setEnd(performance.now())
+    }, [])
+    return (
+      <View style={{ height: 150, borderWidth: 1 }}>
+        <Text>{item.name ?? 'string'}</Text>
+      </View>
+    );
+
+
+  }, [])
+
+  const renderItem = useCallback(({ item }) => {
+
+    return <Item item={item} />
+
+
+  }, []);
+
+  console.log('length', data.length)
 
   const flatListRef = useRef();
+  const realm = useRealm();
 
   // return null;
 
-  return <FlatList renderItem={() => null} data={[]} />;
+  // return <FlatList renderItem={() => null} data={[]} />;
 
-  return <View style={{flex: 1, backgroundColor: 'red'}} />;
+  // return <View style={{flex: 1, backgroundColor: 'red'}} />;
 
-  return <FlatList data={[]} renderItem={({item}) => <View />} />;
+  // return (<View style={{ flex: 1, backgroundColor: 'cyan' }}>
+
+  //   <FlatList data={data} renderItem={({ item }) => <View />} />
+
+  // </View>);
+
+  const onViewableItemsChanged = useCallback(() => {
+    // alert('changed');
+  }, [])
 
   return (
-    <View style={{flex: 1}}>
+    <View style={{ flex: 1, backgroundColor: 'cyan' }}>
+      <Text>Delta time: {Math.floor(end - start)}</Text>
+      <Button title="Populate" onPress={() => {
+
+        realm.write(() => {
+
+          for (let index = 0; index < 100000; index++) {
+            const element = Task.generate(index);
+            realm.create(Task, element, 'all');
+          }
+        })
+        alert('finished writing')
+
+      }} />
+      <Button title="SCROLL 0" onPress={() => {
+        setStart(performance.now())
+        flatListRef.current.scrollToIndex({ index: 0 })
+
+      }} />
+      <Button title="SCROLL 100" onPress={() => {
+        setStart(performance.now())
+        flatListRef.current.scrollToIndex({ index: 100 })
+
+      }} />
+      <Button title="SCROLL 1000" onPress={() => {
+        setStart(performance.now())
+        flatListRef.current.scrollToIndex({ index: 1000 })
+
+      }} />
+      <Button title="SCROLL 10000" onPress={() => {
+        setStart(performance.now())
+        flatListRef.current.scrollToIndex({ index: 10000, animated: false })
+
+      }} />
+      <Button title="SCROLL 90000" onPress={() => {
+        setStart(performance.now())
+        flatListRef.current.scrollToIndex({ index: 90000 })
+
+      }} />
       <FlatList
         data={data}
         renderItem={renderItem}
         ref={flatListRef}
         getItemLayout={getItemLayout}
+        onViewableItemsChanged={onViewableItemsChanged}
+        m
       />
     </View>
   );
@@ -90,7 +151,9 @@ const Section = () => {
 
 const App = () => {
   return (
-    <RealmProvider fallback={<View style={{flex: 1}} />}>
+    <RealmProvider fallback={<View style={{ flex: 1 }} onFirstOpen={realm => {
+
+    }} />}>
       <Section />
     </RealmProvider>
   );
